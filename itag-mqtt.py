@@ -3,24 +3,33 @@ import sys
 import paho.mqtt.client as mqtt
 
 
-def main(device, host):
+def notify(device, client):
     proc = subprocess.Popen(
         ['gatttool', '-b', device, '--char-read', '-a', '0x000c', '--listen'],
         stdout=subprocess.PIPE,
     )
 
+    button_topic = 'itag/{}/button'.format(device)
+    connect_topic = 'itag/{}/connect'.format(device)
+
+    for line in proc.stdout:
+        if b'Characteristic' in line:
+            print(connect_topic)
+            client.publish(connect_topic)
+        elif b'Notification' in line:
+            print(button_topic)
+            client.publish(button_topic)
+
+
+def main(device, host):
     client = mqtt.Client('itag')
     client.connect(host)
     client.loop_start()
 
-    topic = 'itag/{}/button'.format(device)
-
     try:
-        for line in proc.stdout:
-            print(line)
-            if b'Notification' in line:
-                print(topic)
-                client.publish(topic)
+        notify(device, client)
+    except KeyboardInterrupt:
+        pass
     finally:
         client.loop_stop()
 
