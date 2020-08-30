@@ -1,6 +1,7 @@
 import subprocess
 import sys
 import paho.mqtt.client as mqtt
+from threading import Thread
 
 
 def notify(device, client):
@@ -21,13 +22,28 @@ def notify(device, client):
             client.publish(button_topic)
 
 
-def main(device, host):
+def main(host):
+    # Connect to MQTT broker.
     client = mqtt.Client('itag')
     client.connect(host)
     client.loop_start()
 
+    # Look for devices.
+    proc = subprocess.Popen(
+        ['script', '-q', '-c', 'hcitool lescan', '/dev/null'],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        bufsize=1,
+        text=True,
+    )
+
     try:
-        notify(device, client)
+        for line in proc.stdout:
+            addr, name = line.strip().split(None, 1)
+            if 'iTAG' in name:
+                print('found', addr)
+                notifier = Thread(target=notify, args=(addr, client))
+                notifier.start()
     except KeyboardInterrupt:
         pass
     finally:
