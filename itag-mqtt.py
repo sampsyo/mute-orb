@@ -38,7 +38,11 @@ def notify(device, host, announce=False):
             "topic": button_topic,
             "type": "button_short_press",
             "subtype": "button_1",
-            "device": {"identifiers": [device]},
+            "device": {
+                "name": name,
+                "model": "iTag",
+                "identifiers": [device],
+            },
         }))
 
     proc = subprocess.Popen(
