@@ -14,7 +14,7 @@ def notify(device, host):
     MQTT messages to the broker host.
     """
     # Connect to MQTT broker.
-    client = mqtt.Client('itag')
+    client = mqtt.Client('itag/{}'.format(device))
     client.enable_logger(logger)
     client.connect(host)
     client.loop_start()
