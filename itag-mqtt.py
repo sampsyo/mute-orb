@@ -22,6 +22,7 @@ def notify(device, host):
     proc = subprocess.Popen(
         ['gatttool', '-b', device, '--char-read', '-a', '0x000c', '--listen'],
         stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
     )
 
     button_topic = 'itag/{}/button'.format(device)
@@ -35,6 +36,10 @@ def notify(device, host):
             elif b'Notification' in line:
                 print(button_topic)
                 client.publish(button_topic)
+            elif b'error:' in line:
+                print('***', line)
+            else:
+                print('???', line)
     finally:
         client.loop_stop()
 
