@@ -2,6 +2,11 @@ import subprocess
 import sys
 import paho.mqtt.client as mqtt
 from threading import Thread
+import logging
+
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger()
 
 
 def notify(device, host):
@@ -10,6 +15,7 @@ def notify(device, host):
     """
     # Connect to MQTT broker.
     client = mqtt.Client('itag')
+    client.enable_logger(logger)
     client.connect(host)
     client.loop_start()
 
@@ -26,11 +32,9 @@ def notify(device, host):
             if b'Characteristic' in line:
                 print(connect_topic)
                 client.publish(connect_topic)
-                print('sent')
             elif b'Notification' in line:
                 print(button_topic)
                 client.publish(button_topic)
-                print('sent')
     finally:
         client.loop_stop()
 
