@@ -3,15 +3,19 @@ import sys
 import paho.mqtt.client as mqtt
 from threading import Thread
 import logging
+import json
+
+DISCOVERY_PREFIX = 'homeassistant'
 
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger()
 
 
-def notify(device, host):
+def notify(device, host, announce=False):
     """Listen for notifications from a device and publish corresponding
-    MQTT messages to the broker host.
+    MQTT messages to the broker host. If `announce`, then also announce
+    the device for HomeAssistant discovery.
     """
     # Connect to MQTT broker.
     client = mqtt.Client('itag/{}'.format(device))
@@ -19,14 +23,29 @@ def notify(device, host):
     client.connect(host)
     client.loop_start()
 
+    button_topic = 'itag/{}/button'.format(device)
+    connect_topic = 'itag/{}/connect'.format(device)
+
+    # Announce the device for automatic discovery.
+    if announce:
+        name = device.replace(':', '').lower()
+        announce_topic = '{}/device_automation/{}/config'.format(
+            DISCOVERY_PREFIX,
+            name,
+        )
+        client.publish(announce_topic, json.dumps({
+            "automation_type": "trigger",
+            "topic": button_topic,
+            "type": "button_short_press",
+            "subtype": "button_1",
+            "device": {"identifiers": [device]},
+        }))
+
     proc = subprocess.Popen(
         ['gatttool', '-b', device, '--char-read', '-a', '0x000c', '--listen'],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
-
-    button_topic = 'itag/{}/button'.format(device)
-    connect_topic = 'itag/{}/connect'.format(device)
 
     try:
         for line in proc.stdout:
@@ -63,10 +82,11 @@ def discover(name='iTAG'):
             return addr
 
 
-def main(host, *addrs):
+def main(host, *addrs, discovery=False):
     if addrs:
         # Monitor all the devices specified.
-        threads = [Thread(target=notify, args=(addr, host)) for addr in addrs]
+        threads = [Thread(target=notify, args=(addr, host, discovery))
+                   for addr in addrs]
         for thread in threads:
             thread.start()
         try:
@@ -79,10 +99,14 @@ def main(host, *addrs):
         addr = discover()
         print('discovered', addr)
         try:
-            notify(addr, host)
+            notify(addr, host, discovery)
         except KeyboardInterrupt:
             pass
 
 
 if __name__ == '__main__':
-    main(*sys.argv[1:])
+    args = sys.argv[1:]
+    if '-d' in args:
+        discovery = True
+        args.remove('-d')
+    main(*args, discovery=discovery)
