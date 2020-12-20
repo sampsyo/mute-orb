@@ -5,6 +5,9 @@ from threading import Thread
 
 
 def notify(device, host):
+    """Listen for notifications from a device and publish corresponding
+    MQTT messages to the broker host.
+    """
     # Connect to MQTT broker.
     client = mqtt.Client('itag')
     client.connect(host)
@@ -32,8 +35,10 @@ def notify(device, host):
         client.loop_stop()
 
 
-def main(host):
-    # Look for devices.
+def discover(name='iTAG'):
+    """Use hcitool to scan for a device by name and return its MAC
+    address.
+    """
     proc = subprocess.Popen(
         ['script', '-q', '-c', 'hcitool lescan', '/dev/null'],
         stdout=subprocess.PIPE,
@@ -42,16 +47,32 @@ def main(host):
         text=True,
     )
 
-    # Launch a thread for each device we find.
-    try:
-        for line in proc.stdout:
-            addr, name = line.strip().split(None, 1)
-            if 'iTAG' in name:
-                print('found', addr)
-                notifier = Thread(target=notify, args=(addr, host))
-                notifier.start()
-    except KeyboardInterrupt:
-        pass
+    for line in proc.stdout:
+        addr, found_name = line.strip().split(None, 1)
+        if name in found_name:
+            proc.kill()
+            return addr
+
+
+def main(host, *addrs):
+    if addrs:
+        # Monitor all the devices specified.
+        threads = [Thread(target=notify, args=(addr, host)) for addr in addrs]
+        for thread in threads:
+            thread.start()
+        try:
+            for thread in threads:
+                thread.join()
+        except KeyboardInterrupt:
+            pass
+    else:
+        # Look for a single device and monitor it.
+        addr = discover()
+        print('discovered', addr)
+        try:
+            notify(addr, host)
+        except KeyboardInterrupt:
+            pass
 
 
 if __name__ == '__main__':
