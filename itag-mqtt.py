@@ -24,13 +24,8 @@ def notify(device, host, announce=False):
     if announce:
         announce_device(client, device, button_topic)
 
-    proc = subprocess.Popen(
-        ['gatttool', '-b', device, '--char-read', '-a', '0x000c', '--listen'],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-    )
-
     try:
+        proc = gatt_listen()
         for line in proc.stdout:
             if b'Characteristic' in line:
                 print(connect_topic)
@@ -44,6 +39,16 @@ def notify(device, host, announce=False):
                 print('???', line)
     finally:
         client.loop_stop()
+
+
+def gatt_listen(device):
+    """Open a `gatttool` subprocess to listen for events from a device.
+    """
+    return subprocess.Popen(
+        ['gatttool', '-b', device, '--char-read', '-a', '0x000c', '--listen'],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
 
 
 def announce_device(client, device, button_topic):
