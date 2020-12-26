@@ -10,7 +10,7 @@ DISCOVERY_PREFIX = 'homeassistant'
 def notify(device, host, announce=False):
     """Listen for notifications from a device and publish corresponding
     MQTT messages to the broker host. If `announce`, then also announce
-    the device for HomeAssistant discovery.
+    the device for Home Assistant discovery.
     """
     # Connect to MQTT broker.
     client = mqtt.Client('itag/{}'.format(device))
@@ -22,22 +22,7 @@ def notify(device, host, announce=False):
 
     # Announce the device for automatic discovery.
     if announce:
-        name = device.replace(':', '').lower()
-        announce_topic = '{}/device_automation/{}/config'.format(
-            DISCOVERY_PREFIX,
-            name,
-        )
-        client.publish(announce_topic, json.dumps({
-            "automation_type": "trigger",
-            "topic": button_topic,
-            "type": "button_short_press",
-            "subtype": "button_1",
-            "device": {
-                "name": name,
-                "model": "iTag",
-                "identifiers": [device],
-            },
-        }))
+        announce_device(client, device, button_topic)
 
     proc = subprocess.Popen(
         ['gatttool', '-b', device, '--char-read', '-a', '0x000c', '--listen'],
@@ -59,6 +44,27 @@ def notify(device, host, announce=False):
                 print('???', line)
     finally:
         client.loop_stop()
+
+
+def announce_device(client, device, button_topic):
+    """Announce a newly connected device for Home Assistant discovery.
+    """
+    name = device.replace(':', '').lower()
+    announce_topic = '{}/device_automation/{}/config'.format(
+        DISCOVERY_PREFIX,
+        name,
+    )
+    client.publish(announce_topic, json.dumps({
+        "automation_type": "trigger",
+        "topic": button_topic,
+        "type": "button_short_press",
+        "subtype": "button_1",
+        "device": {
+            "name": name,
+            "model": "iTag",
+            "identifiers": [device],
+        },
+    }))
 
 
 def discover(name='iTAG'):
