@@ -2,14 +2,9 @@ import subprocess
 import sys
 import paho.mqtt.client as mqtt
 from threading import Thread
-import logging
 import json
 
 DISCOVERY_PREFIX = 'homeassistant'
-
-
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger()
 
 
 def notify(device, host, announce=False):
@@ -19,7 +14,6 @@ def notify(device, host, announce=False):
     """
     # Connect to MQTT broker.
     client = mqtt.Client('itag/{}'.format(device))
-    client.enable_logger(logger)
     client.connect(host)
     client.loop_start()
 
