@@ -25,18 +25,21 @@ def notify(device, host, announce=False):
         announce_device(client, device, button_topic)
 
     try:
-        proc = gatt_listen()
-        for line in proc.stdout:
-            if b'Characteristic' in line:
-                print(connect_topic)
-                client.publish(connect_topic)
-            elif b'Notification' in line:
-                print(button_topic)
-                client.publish(button_topic)
-            elif b'error:' in line:
-                print('***', line)
-            else:
-                print('???', line)
+        while True:
+            proc = gatt_listen(device)
+            for line in proc.stdout:
+                if b'Characteristic' in line:
+                    print(connect_topic)
+                    client.publish(connect_topic)
+                elif b'Notification' in line:
+                    print(button_topic)
+                    client.publish(button_topic)
+                elif b'error:' in line:
+                    print('***', line)
+                    proc.kill()
+                    break  # Reconnect.
+                else:
+                    print('???', line)
     finally:
         client.loop_stop()
 
