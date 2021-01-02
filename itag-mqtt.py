@@ -7,6 +7,16 @@ import json
 DISCOVERY_PREFIX = 'homeassistant'
 
 
+def _publish(client, topic, payload=None):
+    """Publish an MQTT message, and also log it.
+    """
+    if payload:
+        print('{}: {}'.format(topic, payload))
+    else:
+        print(topic)
+    client.publish(topic, payload)
+
+
 def notify(device, host, announce=False):
     """Listen for notifications from a device and publish corresponding
     MQTT messages to the broker host. If `announce`, then also announce
@@ -19,6 +29,7 @@ def notify(device, host, announce=False):
 
     button_topic = 'itag/{}/button'.format(device)
     connect_topic = 'itag/{}/connect'.format(device)
+    error_topic = 'itag/{}/error'.format(device)
 
     # Announce the device for automatic discovery.
     if announce:
@@ -29,13 +40,13 @@ def notify(device, host, announce=False):
             proc = gatt_listen(device)
             for line in proc.stdout:
                 if b'Characteristic' in line:
-                    print(connect_topic)
-                    client.publish(connect_topic)
+                    _publish(client, connect_topic)
                 elif b'Notification' in line:
-                    print(button_topic)
-                    client.publish(button_topic)
+                    _publish(client, button_topic)
                 elif b'error:' in line:
-                    print('***', line)
+                    _, msg = line.split(b'error:', 1)
+                    msg_txt = msg.strip().decode('utf8', 'ignore')
+                    _publish(client, error_topic, msg_txt)
                     proc.kill()
                     break  # Reconnect.
                 else:
