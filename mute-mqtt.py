@@ -23,10 +23,12 @@ try {
 
 
 def osascript(script):
+    # You'll need to give Terminal "Accessibility" privileges.
     res = subprocess.run(
         ['osascript', '-l', 'JavaScript', '-'],
         input=script.encode('utf8'),
         capture_output=True,
+        check=True,
     )
     return res.stdout
 
